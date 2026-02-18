@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GLB Raum-Projektor</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@300;400;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #2a2a3a;
+    --accent: #00e5ff;
+    --accent2: #7c3aed;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #canvas-container {
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Grid overlay */
+  #canvas-container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Corner brackets */
+  #canvas-container::after {
+    content: '';
+    position: absolute;
+    inset: 16px;
+    border: 1px solid transparent;
+    border-image: linear-gradient(var(--accent), var(--accent2)) 1;
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0.4;
+  }
+
+  /* HUD */
+  #hud {
+    position: absolute;
+    top: 24px;
+    left: 24px;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  #hud h1 {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+    opacity: 0.8;
+  }
+
+  #hud .model-name {
+    font-size: 18px;
+    font-weight: 700;
+    margin-top: 4px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+  }
+
+  #status {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    z-index: 10;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    text-align: right;
+    pointer-events: none;
+  }
+
+  #status .dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-right: 6px;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* Controls panel */
+  #controls {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    z-index: 10;
+  }
+
+  #drop-zone {
+    flex: 1;
+    min-width: 200px;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #drop-zone:hover, #drop-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(0,229,255,0.04);
+  }
+
+  #drop-zone svg { flex-shrink: 0; opacity: 0.6; }
+
+  #drop-zone span {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  #file-input { display: none; }
+
+  .divider {
+    width: 1px;
+    height: 36px;
+    background: var(--border);
+  }
+
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .control-group label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .control-group input[type=range] {
+    -webkit-appearance: none;
+    width: 90px;
+    height: 2px;
+    background: var(--border);
+    outline: none;
+    border-radius: 2px;
+  }
+
+  .control-group input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+
+  .btn-group { display: flex; gap: 6px; }
+
+  .btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+  }
+
+  .btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,229,255,0.05);
+  }
+
+  .btn.active {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+  }
+
+  /* AR overlay toggle */
+  #ar-btn {
+    border-color: var(--accent2);
+    color: var(--accent2);
+  }
+  #ar-btn:hover, #ar-btn.active {
+    background: var(--accent2);
+    color: white;
+    border-color: var(--accent2);
+  }
+
+  /* Drop overlay */
+  #drop-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,229,255,0.08);
+    border: 2px dashed var(--accent);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  #drop-overlay.show { display: flex; }
+
+  /* Info overlay */
+  #info {
+    position: absolute;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    z-index: 10;
+    pointer-events: none;
+    transition: opacity 0.5s;
+  }
+
+  #info p {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    margin: 2px 0;
+  }
+
+  #loading {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 15;
+    flex-direction: column;
+    gap: 16px;
+    background: rgba(10,10,15,0.7);
+    backdrop-filter: blur(4px);
+  }
+
+  #loading.show { display: flex; }
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #loading p {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-container">
+  <canvas id="three-canvas"></canvas>
+
+  <div id="hud">
+    <h1>GLB Projektor</h1>
+    <div class="model-name" id="model-label">Kein Modell geladen</div>
+  </div>
+
+  <div id="status">
+    <span class="dot"></span>BEREIT<br>
+    <span id="info-text">Ziehe eine GLB-Datei in den Bereich</span>
+  </div>
+
+  <div id="info">
+    <p>🖱 DREHEN · 🔲 ZOOMEN · ➕ VERSCHIEBEN (rechte Maustaste)</p>
+  </div>
+
+  <div id="drop-overlay">
+    GLB / GLTF hier loslassen
+  </div>
+
+  <div id="loading">
+    <div class="spinner"></div>
+    <p>LADE MODELL ...</p>
+  </div>
+</div>
+
+<div id="controls">
+  <div id="drop-zone">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+      <polyline points="17 8 12 3 7 8"/>
+      <line x1="12" y1="3" x2="12" y2="15"/>
+    </svg>
+    <span>GLB / GLTF Datei laden oder hierher ziehen</span>
+    <input type="file" id="file-input" accept=".glb,.gltf">
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="control-group">
+    <label>Skalierung</label>
+    <input type="range" id="scale-slider" min="0.01" max="5" step="0.01" value="1">
+  </div>
+
+  <div class="control-group">
+    <label>Höhe</label>
+    <input type="range" id="height-slider" min="-3" max="3" step="0.05" value="0">
+  </div>
+
+  <div class="control-group">
+    <label>Rotation</label>
+    <input type="range" id="rot-slider" min="0" max="360" step="1" value="0">
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="btn-group">
+    <button class="btn" id="wireframe-btn">Drahtgitter</button>
+    <button class="btn" id="shadow-btn active" id="shadow-btn">Schatten</button>
+    <button class="btn" id="reset-btn">Reset</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="btn-group">
+    <button class="btn" id="grid-btn">Boden</button>
+    <button class="btn active" id="lights-btn">Licht</button>
+    <button class="btn" id="ar-btn" id="ar-btn">AR-Modus</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ===== Three.js Setup =====
+const canvas = document.getElementById('three-canvas');
+const container = document.getElementById('canvas-container');
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0a0f);
+scene.fog = new THREE.Fog(0x0a0a0f, 20, 80);
+
+const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 1000);
+camera.position.set(3, 2, 5);
+camera.lookAt(0, 0, 0);
+
+// Resize
+function resize() {
+  const w = container.clientWidth;
+  const h = container.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ===== Lights =====
+const ambientLight = new THREE.AmbientLight(0x404060, 0.5);
+scene.add(ambientLight);
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+dirLight.position.set(5, 10, 5);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.set(2048, 2048);
+dirLight.shadow.camera.near = 0.1;
+dirLight.shadow.camera.far = 50;
+dirLight.shadow.camera.left = -10;
+dirLight.shadow.camera.right = 10;
+dirLight.shadow.camera.top = 10;
+dirLight.shadow.camera.bottom = -10;
+scene.add(dirLight);
+
+const accentLight = new THREE.PointLight(0x00e5ff, 0.8, 20);
+accentLight.position.set(-4, 3, -4);
+scene.add(accentLight);
+
+const accentLight2 = new THREE.PointLight(0x7c3aed, 0.5, 15);
+accentLight2.position.set(4, 1, -3);
+scene.add(accentLight2);
+
+// ===== Grid / Ground =====
+const gridHelper = new THREE.GridHelper(20, 40, 0x1a1a2e, 0x12121a);
+gridHelper.visible = false;
+scene.add(gridHelper);
+
+const groundGeo = new THREE.PlaneGeometry(20, 20);
+const groundMat = new THREE.MeshStandardMaterial({
+  color: 0x0d0d14,
+  roughness: 0.8,
+  metalness: 0.1,
+  transparent: true,
+  opacity: 0.6
+});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.01;
+ground.receiveShadow = true;
+ground.visible = false;
+scene.add(ground);
+
+// ===== Orbit Controls (manual) =====
+let isPointerDown = false;
+let lastPointer = { x: 0, y: 0 };
+let pointerButton = 0;
+let theta = 0.5, phi = 0.8, radius = 6;
+let panX = 0, panY = 0;
+
+function updateCamera() {
+  camera.position.x = panX + radius * Math.sin(phi) * Math.sin(theta);
+  camera.position.y = panY + radius * Math.cos(phi);
+  camera.position.z = radius * Math.sin(phi) * Math.cos(theta);
+  camera.lookAt(panX, panY, 0);
+}
+updateCamera();
+
+canvas.addEventListener('pointerdown', e => {
+  isPointerDown = true;
+  lastPointer = { x: e.clientX, y: e.clientY };
+  pointerButton = e.button;
+  canvas.setPointerCapture(e.pointerId);
+});
+
+canvas.addEventListener('pointermove', e => {
+  if (!isPointerDown) return;
+  const dx = e.clientX - lastPointer.x;
+  const dy = e.clientY - lastPointer.y;
+  lastPointer = { x: e.clientX, y: e.clientY };
+
+  if (pointerButton === 0) {
+    theta -= dx * 0.005;
+    phi = Math.max(0.1, Math.min(Math.PI - 0.1, phi - dy * 0.005));
+  } else if (pointerButton === 2) {
+    panX -= dx * 0.005;
+    panY += dy * 0.005;
+  }
+  updateCamera();
+});
+
+canvas.addEventListener('pointerup', () => isPointerDown = false);
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+canvas.addEventListener('wheel', e => {
+  radius = Math.max(0.5, Math.min(50, radius + e.deltaY * 0.01));
+  updateCamera();
+}, { passive: true });
+
+// Touch pinch zoom
+let lastTouchDist = null;
+canvas.addEventListener('touchstart', e => {
+  if (e.touches.length === 2) lastTouchDist = Math.hypot(
+    e.touches[0].clientX - e.touches[1].clientX,
+    e.touches[0].clientY - e.touches[1].clientY
+  );
+});
+canvas.addEventListener('touchmove', e => {
+  if (e.touches.length === 2) {
+    const d = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    if (lastTouchDist) {
+      radius = Math.max(0.5, Math.min(50, radius - (d - lastTouchDist) * 0.02));
+      updateCamera();
+    }
+    lastTouchDist = d;
+  }
+}, { passive: true });
+
+// ===== GLTF Loader (manual fetch + parse) =====
+let currentModel = null;
+let isWireframe = false;
+let shadowEnabled = true;
+
+async function loadGLB(arrayBuffer, name) {
+  showLoading(true);
+  try {
+    // Dynamic import via script tag trick for GLTFLoader
+    const blob = new Blob([arrayBuffer], { type: 'model/gltf-binary' });
+    const url = URL.createObjectURL(blob);
+
+    if (!window.GLTFLoader) {
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/js/loaders/GLTFLoader.js');
+    }
+
+    const loader = new THREE.GLTFLoader();
+    loader.load(url, gltf => {
+      if (currentModel) {
+        scene.remove(currentModel);
+        currentModel.traverse(obj => {
+          if (obj.geometry) obj.geometry.dispose();
+          if (obj.material) {
+            if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+            else obj.material.dispose();
+          }
+        });
+      }
+
+      const model = gltf.scene;
+
+      // Auto-center and scale
+      const box = new THREE.Box3().setFromObject(model);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const scale = 2 / maxDim;
+
+      model.position.sub(center.multiplyScalar(scale));
+      model.scale.setScalar(scale);
+      model.position.y += size.y * scale / 2;
+
+      // Shadows
+      model.traverse(obj => {
+        if (obj.isMesh) {
+          obj.castShadow = true;
+          obj.receiveShadow = true;
+        }
+      });
+
+      scene.add(model);
+      currentModel = model;
+      currentModel.userData.baseScale = scale;
+
+      // Sync sliders
+      scaleSlider.value = 1;
+      heightSlider.value = 0;
+      rotSlider.value = 0;
+
+      document.getElementById('model-label').textContent = name.replace(/\.(glb|gltf)$/i, '');
+      document.getElementById('info-text').textContent = `${name} · ${(arrayBuffer.byteLength / 1024 / 1024).toFixed(2)} MB`;
+
+      URL.revokeObjectURL(url);
+      showLoading(false);
+      document.getElementById('info').style.opacity = '1';
+    }, undefined, err => {
+      console.error(err);
+      showLoading(false);
+      alert('Fehler beim Laden: ' + err.message);
+    });
+  } catch (e) {
+    showLoading(false);
+    console.error(e);
+  }
+}
+
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = res;
+    s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+function showLoading(v) {
+  document.getElementById('loading').classList.toggle('show', v);
+}
+
+// ===== File Handling =====
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+const dropOverlay = document.getElementById('drop-overlay');
+
+dropZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => {
+  if (e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+document.addEventListener('dragover', e => {
+  e.preventDefault();
+  dropOverlay.classList.add('show');
+});
+document.addEventListener('dragleave', e => {
+  if (!e.relatedTarget) dropOverlay.classList.remove('show');
+});
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  dropOverlay.classList.remove('show');
+  const file = e.dataTransfer.files[0];
+  if (file) handleFile(file);
+});
+
+function handleFile(file) {
+  if (!file.name.match(/\.(glb|gltf)$/i)) {
+    alert('Bitte eine .glb oder .gltf Datei verwenden.');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => loadGLB(e.target.result, file.name);
+  reader.readAsArrayBuffer(file);
+}
+
+// ===== Controls =====
+const scaleSlider = document.getElementById('scale-slider');
+const heightSlider = document.getElementById('height-slider');
+const rotSlider = document.getElementById('rot-slider');
+
+scaleSlider.addEventListener('input', () => {
+  if (!currentModel) return;
+  const base = currentModel.userData.baseScale || 1;
+  currentModel.scale.setScalar(base * parseFloat(scaleSlider.value));
+});
+
+heightSlider.addEventListener('input', () => {
+  if (!currentModel) return;
+  currentModel.position.y = parseFloat(heightSlider.value);
+});
+
+rotSlider.addEventListener('input', () => {
+  if (!currentModel) return;
+  currentModel.rotation.y = (parseFloat(rotSlider.value) * Math.PI) / 180;
+});
+
+// Wireframe
+const wireframeBtn = document.getElementById('wireframe-btn');
+wireframeBtn.addEventListener('click', () => {
+  isWireframe = !isWireframe;
+  wireframeBtn.classList.toggle('active', isWireframe);
+  if (currentModel) {
+    currentModel.traverse(obj => {
+      if (obj.isMesh) {
+        if (Array.isArray(obj.material)) obj.material.forEach(m => m.wireframe = isWireframe);
+        else obj.material.wireframe = isWireframe;
+      }
+    });
+  }
+});
+
+// Grid/Ground
+const gridBtn = document.getElementById('grid-btn');
+let gridVisible = false;
+gridBtn.addEventListener('click', () => {
+  gridVisible = !gridVisible;
+  gridHelper.visible = gridVisible;
+  ground.visible = gridVisible;
+  gridBtn.classList.toggle('active', gridVisible);
+});
+
+// Lights
+const lightsBtn = document.getElementById('lights-btn');
+let lightsOn = true;
+lightsBtn.addEventListener('click', () => {
+  lightsOn = !lightsOn;
+  accentLight.visible = lightsOn;
+  accentLight2.visible = lightsOn;
+  dirLight.intensity = lightsOn ? 1.5 : 0.4;
+  ambientLight.intensity = lightsOn ? 0.5 : 1.0;
+  lightsBtn.classList.toggle('active', lightsOn);
+});
+
+// Reset
+document.getElementById('reset-btn').addEventListener('click', () => {
+  theta = 0.5; phi = 0.8; radius = 6; panX = 0; panY = 0;
+  updateCamera();
+  if (currentModel) {
+    const base = currentModel.userData.baseScale || 1;
+    currentModel.scale.setScalar(base);
+    currentModel.position.y = 0;
+    currentModel.rotation.y = 0;
+    scaleSlider.value = 1;
+    heightSlider.value = 0;
+    rotSlider.value = 0;
+  }
+});
+
+// AR Mode: video background
+const arBtn = document.getElementById('ar-btn');
+let arActive = false;
+let videoEl = null;
+
+arBtn.addEventListener('click', async () => {
+  if (!arActive) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      videoEl = document.createElement('video');
+      videoEl.srcObject = stream;
+      videoEl.autoplay = true;
+      videoEl.playsInline = true;
+      videoEl.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;opacity:0.85;';
+      container.insertBefore(videoEl, canvas);
+      scene.background = null;
+      renderer.setClearColor(0x000000, 0);
+      arActive = true;
+      arBtn.classList.add('active');
+      arBtn.textContent = 'AR Aus';
+    } catch (e) {
+      alert('Kamera-Zugriff verweigert. AR-Modus benötigt eine Kamera.');
+    }
+  } else {
+    if (videoEl) {
+      videoEl.srcObject.getTracks().forEach(t => t.stop());
+      videoEl.remove();
+      videoEl = null;
+    }
+    scene.background = new THREE.Color(0x0a0a0f);
+    renderer.setClearColor(0x0a0a0f, 1);
+    arActive = false;
+    arBtn.classList.remove('active');
+    arBtn.textContent = 'AR-Modus';
+  }
+});
+
+// ===== Animate =====
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+
+  // Subtle light animation
+  accentLight.position.x = Math.sin(t * 0.3) * 5;
+  accentLight.position.z = Math.cos(t * 0.3) * 5;
+
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>
