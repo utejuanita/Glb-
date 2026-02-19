@@ -1,1 +1,54 @@
-<!DOCTYPE html>\n<html lang='en'>\n<head>\n    <meta charset='UTF-8'>\n    <meta name='viewport' content='width=device-width, initial-scale=1.0'>\n    <title>GLB Viewer</title>\n    <script type='module'>\n        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js';\n        import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160/examples/jsm/loaders/GLTFLoader.js';\n        // Import other necessary modules...\n    </script>\n    <style>\n        /* Add your CSS styles here */\n    </style>\n</head>\n<body>\n    <div id='container'></div>\n    <input type='file' id='file-input' accept='.gltf, .glb' />\n    <button id='lightsBtn'>Toggle Lights</button>\n    <input type='range' id='scaleSlider' min='0.1' max='5' step='0.1' value='1' />\n    <input type='range' id='heightSlider' min='0' max='10' step='0.1' value='1' />\n    <input type='range' id='rotationSlider' min='0' max='360' step='1' value='0' />\n    <script>\n        const scene = new THREE.Scene();\n        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);\n        const renderer = new THREE.WebGLRenderer();\n        renderer.setSize(window.innerWidth, window.innerHeight);\n        document.getElementById('container').appendChild(renderer.domElement);\n        const gltfLoader = new GLTFLoader();\n        const controls = new THREE.OrbitControls(camera, renderer.domElement);\n        // Additional setup code...\n\n        // Event listeners for buttons and sliders\n        const lightsBtn = document.getElementById('lightsBtn');\n        lightsBtn.addEventListener('click', () => {\n            // Toggle lights functionality...\n        });\n        // Add listeners for the sliders...\n    </script>\n</body>\n</html>\n
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GLB Viewer</title>
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --fg: #d3d3d3;
+        }
+        body {
+            background-color: var(--bg);
+            color: var(--fg);
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        /* Add your complete CSS styling here with a dark theme */
+    </style>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/three@0.130.1/build/three.module.js"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/three@0.130.1/examples/jsm/loaders/GLTFLoader.js"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/three@0.130.1/examples/jsm/controls/OrbitControls.js"></script>
+    <!-- Other necessary imports for Three.js setup -->
+</head>
+<body>
+    <h1>GLB Viewer Application</h1>
+    <div id="container"></div>
+    <button id="wireframeBtn">Wireframe Mode</button>
+    <button id="shadowBtn">Shadow</button>
+    <button id="resetBtn">Reset</button>
+    <button id="gridBtn">Grid</button>
+    <button id="lightsBtn">Lights</button> <!-- Fixed typo from hlightsBtn -->
+    <button id="arBtn">AR Mode</button>
+    <br>
+    <label>Scale:</label>
+    <input type="range" id="scaleSlider" min="0.1" max="3.0" step="0.1" value="1.0">
+    <label>Height:</label>
+    <input type="range" id="heightSlider" min="-10" max="10" step="0.1" value="0">
+    <label>Rotation:</label>
+    <input type="range" id="rotationSlider" min="0" max="360" step="1" value="0">
+    
+    <script>
+        // Three.js setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('container').appendChild(renderer.domElement);
+        // Additional setup and GLTFLoader code goes here
+        // Include touch controls for mobile, drag and drop functionality, etc.
+    </script>
+</body>
+</html>
