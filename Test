@@ -505,27 +505,53 @@ canvas.addEventListener('wheel', e => {
   updateCamera();
 }, { passive: true });
 
-// Touch pinch zoom
+// Touch pinch zoom + two-finger pan
 let lastTouchDist = null;
+let lastTouchCenter = null;
+
 canvas.addEventListener('touchstart', e => {
-  if (e.touches.length === 2) lastTouchDist = Math.hypot(
-    e.touches[0].clientX - e.touches[1].clientX,
-    e.touches[0].clientY - e.touches[1].clientY
-  );
+  if (e.touches.length === 2) {
+    lastTouchDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    lastTouchCenter = {
+      x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+      y: (e.touches[0].clientY + e.touches[1].clientY) / 2
+    };
+  }
 });
+
 canvas.addEventListener('touchmove', e => {
   if (e.touches.length === 2) {
+    // Pinch to zoom
     const d = Math.hypot(
       e.touches[0].clientX - e.touches[1].clientX,
       e.touches[0].clientY - e.touches[1].clientY
     );
     if (lastTouchDist) {
       radius = Math.max(0.5, Math.min(50, radius - (d - lastTouchDist) * 0.02));
-      updateCamera();
     }
     lastTouchDist = d;
+
+    // Two-finger pan
+    const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+    const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+    
+    if (lastTouchCenter) {
+      panX -= (centerX - lastTouchCenter.x) * 0.01;
+      panY += (centerY - lastTouchCenter.y) * 0.01;
+    }
+    lastTouchCenter = { x: centerX, y: centerY };
+    
+    updateCamera();
   }
 }, { passive: true });
+
+canvas.addEventListener('touchend', () => {
+  lastTouchDist = null;
+  lastTouchCenter = null;
+});
 
 // ===== GLTF Loader (manual fetch + parse) =====
 let currentModel = null;
