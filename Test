@@ -546,7 +546,7 @@ canvas.addEventListener('pointermove', e => {
 });
 
 canvas.addEventListener('pointerup', e => {
-  const wasDrag = pointerMovedDist > 8;
+  const wasDrag = pointerMovedDist > 8; // 8 px threshold to distinguish click from drag
   isPointerDown = false;
   // AR anchor: detect click (no drag) on model during PLACING state
   if (!wasDrag && e.button === 0 && arState === AR_STATE.PLACING && currentModel) {
@@ -880,8 +880,8 @@ let arModelFloatBase = 0;
 
 function createARFloorDots() {
   const positions = [];
-  const spread = 3.2;
-  const spacing = 0.22;
+  const spread = 3.2;   // half-extent in metres
+  const spacing = 0.22; // distance between dots
   const half = Math.floor(spread / spacing);
   for (let ix = -half; ix <= half; ix++) {
     for (let iz = -half; iz <= half; iz++) {
@@ -1035,8 +1035,10 @@ function animate() {
 
   // Pulse floor dots and gently float model during AR placement
   if (arFloorDots && arFloorDots.visible) {
+    // Opacity oscillates between ~0 and ~0.9 at 2.5 rad/s for a breathing effect
     arFloorDots.material.opacity = 0.45 + 0.45 * Math.sin(t * 2.5);
     if (arState === AR_STATE.PLACING && currentModel) {
+      // Float model 5 cm up/down at 1.8 rad/s to signal it is not yet anchored
       currentModel.position.y = arModelFloatBase + Math.sin(t * 1.8) * 0.05;
     }
   }
