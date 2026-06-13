@@ -209,7 +209,7 @@
   .btn-group { display: flex; gap: 6px; }
 
   .btn {
-    font-family: 'Space Mono', monospace;
+    font-family: 'Roboto', monospace;
     font-size: 10px;
     letter-spacing: 0.08em;
     padding: 6px 12px;
@@ -276,7 +276,7 @@
   }
 
   #info p {
-    font-family: 'Space Mono', monospace;
+    font-family: 'Roboto', monospace;
     font-size: 11px;
     color: var(--muted);
     letter-spacing: 0.1em;
@@ -419,9 +419,10 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true 
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.outputEncoding = THREE.sRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.2;
+renderer.xr.enabled = true;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0a0a0f);
